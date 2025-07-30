@@ -1,0 +1,126 @@
+name: node-goat-ci-npm-docker
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.gitlab-ci*'
+      - 'azure-pipelines*'
+      - '.github/workflows/frogbot*'
+      - '.github/workflows/jfrog-sast*'
+  pull_request:
+    types: 
+      - closed
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  actions: read # for detecting the Github Actions environment.
+  id-token: write # for creating OIDC tokens for signing.
+  packages: write # for uploading attestations.
+  contents: read #Ability to read the contents permission
+  security-events: write # Required for uploading code scanning 
+
+env:
+  NODE_DEFAULT_VERSION: 20  
+  NPM_JF_RT_REPO: ${{ vars.NPM_JF_RT_REPO }}
+  DOCKER_JF_RT_REPO: ${{ vars.DOCKER_JF_RT_REPO }}
+  JF_URL: ${{ vars.JF_URL }}
+jobs:
+  npm-docker-build-and-publish-dev:
+    runs-on: ubuntu-22.04
+    steps:
+      - run: |
+          echo "The job was triggered by a ${{ github.event_name }} event."
+      - name: Check out repository code 🛎️
+        uses: actions/checkout@v3
+      - run: |
+          echo "${{ github.repository }} repository has been cloned to the runner."
+      - name: List files in the repository
+        run: |
+          ls -la ${{ github.workspace }}
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with: 
+          node-version: ${{ env.NODE_DEFAULT_VERSION }}
+      - name: JFrog CLI setup 🐸
+        uses: jfrog/setup-jfrog-cli@v4
+        env:
+          JF_URL: https://${{ vars.JF_URL }}/
+          JF_PROJECT: ${{ vars.JF_PROJECT }}
+#          JF_ACCESS_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+        with:
+          oidc-provider-name: github-oidc-marco 
+          oidc-audience: Marco Morales
+      - name: Health check JFrog Artifactory instance 🐸
+        run: |
+          jf --version
+          jf rt ping
+          jf config show
+      - name: Set JF NPM Config
+        run:  |
+          jf npm-config --repo-deploy=$NPM_JF_RT_REPO -repo-resolve=$NPM_JF_RT_REPO
+          jf npm config set registry ${{ env.JF_URL }}/artifactory/api/npm/$NPM_JF_RT_REPO/
+          jf npm config list | jq -r .registry
+        env:
+          JF_URL: https://${{ vars.JF_URL }}
+      - name: JFrog Curation audit 🐸
+        run: |
+          jf curation-audit --threads 6
+      - name: JFrog audit Secrets 🔑🐸
+        run: |
+          jf audit --secrets --validate-secrets true
+      - name: JFrog audit - SAST 🐸
+        run: |
+          jf audit --sast --format=sarif --fail false > jfrog_sast.sarif
+      - name: Upload output to generate autofix
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: jfrog_sast.sarif
+      - name: Capture build version
+        run: echo NPM_PACKAGE_BUILD_VERSION=$(cat package.json | jq -r ."version") >> $GITHUB_ENV
+      - name: Install NPM dependencies
+        run: |
+          jf npm ci --ignore-scripts --module npm-build
+      - name: NPM publish 🐸
+        run: jfrog npm publish --module npm-build
+      - name: Login to JFrog Docker repo
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.JF_URL }}
+          username: ${{ secrets.JF_USERNAME }}
+          password: ${{ secrets.JF_ACCESS_TOKEN }}
+      - name: Docker Build 🐳🐸
+        run: |
+          echo "registry=https://${{ env.JF_URL }}/artifactory/api/npm/${{ env.NPM_JF_RT_REPO }}/" >> $HOME/.npmrc
+          echo "//${{ env.JF_URL }}/artifactory/api/npm/${{ env.NPM_JF_RT_REPO }}/:_authToken=${{ env.NPM_TOKEN }}" >> $HOME/.npmrc
+          echo jf docker image build --tag ${{ env.JF_URL }}/${{ env.DOCKER_JF_RT_REPO }}/node-goat:${{ env.NPM_PACKAGE_BUILD_VERSION }} --secret id=npmrc,src=$HOME/.npmrc --module docker-build  --build-arg="REGISTRY_URL=${{ env.JF_URL }}" --build-arg="DOCKER_REPO_NAME=${{ env.DOCKER_JF_RT_REPO }}" --build-arg="NPM_REPO_NAME=${{ env.NPM_JF_RT_REPO }}" .
+          jf docker image build --tag ${{ env.JF_URL }}/${{ env.DOCKER_JF_RT_REPO }}/node-goat:${{ env.NPM_PACKAGE_BUILD_VERSION }} --secret id=npmrc,src=$HOME/.npmrc --module docker-build  --build-arg="REGISTRY_URL=${{ env.JF_URL }}" --build-arg="DOCKER_REPO_NAME=${{ env.DOCKER_JF_RT_REPO }}" --build-arg="NPM_REPO_NAME=${{ env.NPM_JF_RT_REPO }}" .
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+          NPM_TOKEN: ${{ secrets.JF_ACCESS_TOKEN }}
+      - name: JFrog docker image scan 🐳🐸
+        run: |
+          jf docker scan ${{ env.JF_URL }}/$DOCKER_JF_RT_REPO/node-goat:${{ env.NPM_PACKAGE_BUILD_VERSION }} --format json --threads 6
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+      - name: Docker Push 🐳🐸
+        run: |
+          jf docker push ${{ env.JF_URL }}/$DOCKER_JF_RT_REPO/node-goat:${{ env.NPM_PACKAGE_BUILD_VERSION }} --module docker-build 
+        env:
+          JF_URL: ${{ vars.JF_URL }}
+      - name: Gather build details 🐸
+        run: |
+          jf rt build-add-git ./
+          jf rt build-collect-env
+      - name: JFrog build publish 🐸
+        run: jf rt build-publish
+      - name: JFrog build scan 🐸
+        run: |
+          sleep 60
+          jf bs --vuln=true --format json
+      - name: JFrog create release bundle 🐸
+        run: |
+          jf rbc --spec=rbv2_build_spec.json --spec-vars="build-name=${{ env.JFROG_CLI_BUILD_NAME }};build-number=${{ env.JFROG_CLI_BUILD_NUMBER }};project-key=${{ vars.JF_PROJECT }}" --sync=true --signing-key=${{ secrets.JF_RB_SIGNING_KEY_NAME }} ${{ env.JFROG_CLI_BUILD_NAME }} ${{ env.NPM_PACKAGE_BUILD_VERSION }}

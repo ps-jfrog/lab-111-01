@@ -1,0 +1,8 @@
+{
+    "files": [
+        {
+            "build": "${build-name}/${build-number}",
+            "project": "${project-key}"
+        }
+    ]
+}
