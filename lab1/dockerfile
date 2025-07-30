@@ -1,0 +1,37 @@
+# Use a base image
+FROM alpine:latest
+
+# Maintainer (optional)
+LABEL maintainer="your-email@example.com"
+
+# Install some necessary packages using apk (Alpine's package manager)
+# Note: curl and git are commonly available. bash is included for the example script.
+RUN apk update && apk add --no-cache curl git bash
+
+# --- EMBEDDED SECRET EXAMPLE ---
+# This is a hardcoded AWS Access Key ID, which Xray's secrets detection will likely flag.
+ENV AWS_ACCESS_KEY_ID="AKIAIOSFODNN7EXAMPLE"
+
+# This is a hardcoded AWS Secret Access Key, also highly detectable.
+ENV AWS_SECRET_ACCESS_KEY="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
+# Another example: a private key directly embedded (though typically these are multi-line)
+# For simplicity, a single line representation. Real private keys are much longer.
+ENV SSH_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----MIIEpAIBAKCAQEA...EXAMPLEKEY...-----END RSA PRIVATE KEY-----"
+
+# Add a script that might contain sensitive info (even if not directly in ENV)
+COPY secret_script.sh /app/secret_script.sh
+RUN chmod +x /app/secret_script.sh
+
+# A file potentially containing API keys
+COPY api_keys.txt /app/api_keys.txt
+
+# Create a directory and set permissions
+RUN mkdir /app/data
+WORKDIR /app
+
+# Expose a port if this were a web application
+EXPOSE 8080
+
+# Command to run the application (e.g., a simple web server or script)
+CMD ["bash", "-c", "echo 'Application running'; tail -f /dev/null"]
