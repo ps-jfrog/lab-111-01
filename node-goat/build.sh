@@ -21,6 +21,9 @@ jf rt bag $JFROG_BUILD_NAME $JFROG_BUILD_NUMBER
 echo "Publishing build info..."
 jf rt bp $JFROG_BUILD_NAME $JFROG_BUILD_NUMBER
 
+HFQDN=`nslookup academy-artifactory |grep academy-artifactory |awk '{print $1}'|grep -v Name`
+jf docker login  -uadmin -pAdmin1234! ${HFQDN}
+
 # Trigger the Xray scan on the published build info
 echo "Running Xray scan on build $JFROG_BUILD_NAME/$JFROG_BUILD_NUMBER..."
 jf bs $JFROG_BUILD_NAME $JFROG_BUILD_NUMBER
