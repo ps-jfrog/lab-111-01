@@ -6,6 +6,14 @@ export JFROG_BUILD_NUMBER=$(date +%s)
 
 echo "Building and publishing build info for NodeGoat..."
 
+# Clean the npm cache to ensure a fresh download.
+npm cache clean --force
+
+# Remove the node_modules directory and package-lock.json.
+cd ~/jfrog/node-goat
+rm -rf node_modules
+rm -f package-lock.json
+
 # Use JFrog CLI to install npm dependencies and capture build info
 # The --build-name and --build-number flags associate this action with a build
 jf npm install --build-name=$JFROG_BUILD_NAME --build-number=$JFROG_BUILD_NUMBER
