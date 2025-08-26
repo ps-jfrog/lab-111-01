@@ -16,7 +16,7 @@ rm -f package-lock.json
 
 # Use JFrog CLI to install npm dependencies and capture build info
 # The --build-name and --build-number flags associate this action with a build
-jf npm install --build-name=$JFROG_BUILD_NAME --build-number=$JFROG_BUILD_NUMBER
+jf npm install --build-name=$JFROG_BUILD_NAME --build-number=$JFROG_BUILD_NUMBER --no-fund --no-audit
 #jf npm ci --no-fund --no-audit
 
 # You can optionally publish the package itself, but for a build scan, the dependencies are what's key
