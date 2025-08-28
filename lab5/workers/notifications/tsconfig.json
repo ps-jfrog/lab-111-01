@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "declaration": true,
+        "target": "es2022",
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": false,
+        "noFallthroughCasesInSwitch": false,
+        "allowJs": true,
+        "sourceMap": true,
+        "outDir": "./compiled",
+    },
+    "include": [
+        "**/*.ts",
+        "node_modules/@types/**/*.d.ts"
+    ]
+}

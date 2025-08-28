@@ -1,0 +1,11 @@
+{
+    "name": "demo-hook-handler",
+    "description": "Run a script on GENERIC_EVENT",
+    "secrets": {},
+    "sourceCodePath": "./worker.ts",
+    "action": "GENERIC_EVENT",
+    "enabled": false,
+    "debug": false,
+    "projectKey": "",
+    "application": "worker"
+}
