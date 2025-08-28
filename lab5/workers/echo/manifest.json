@@ -1,6 +1,6 @@
 {
     "name": "demo-hook-handler",
-    "description": "Run a script on GENERIC_EVENT",
+    "description": "Simple echo service to demonstrate hook listener capabilities",
     "secrets": {},
     "sourceCodePath": "./worker.ts",
     "action": "GENERIC_EVENT",
