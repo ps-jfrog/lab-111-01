@@ -1,8 +1,6 @@
 import { PlatformContext } from 'jfrog-workers';
 import { AxiosInstance } from 'axios';
 
-let DEBUG = false; 
-
 type CustomPayload = void;
 type CustomResponse = {
     message: string,
@@ -49,7 +47,6 @@ export default async (context: PlatformContext, data: CustomPayload): Promise<Cu
         // NOTE: The slack token is externalized in 1Password whcih may not work in your environment
         const slackToken = getProperty(context, 'slackToken', 'op://Employee/slackToken/Section_4cpskzryw65wp4swm6us2pweum/token-value'); 
         const slackChannel = getProperty(context, 'slackChannel', 'C08F6AFFHND'); 
-        DEBUG = getProperty(context, 'debug', 'false') === 'true'; // Allow debug to be overridden by the secret
 
         let payload: MessageData;
 
@@ -63,8 +60,7 @@ export default async (context: PlatformContext, data: CustomPayload): Promise<Cu
             if (payload.email && payload.email.trim()) {
                 const id = await getMemberIdByEmail(context, payload.email, slackToken, response);
                 if (id) {
-                    debugLog(`Sending DM to ${payload.email} with id: ${id}`);
-                    // console.log(`${rawMessageData.email} is member id: ${id}`);
+                    console.log(`Sending DM to ${payload.email} with id: ${id}`);
                     try {
                         await sendSlackMessage(context, payload, slackToken, id, response);
                     } catch (error) {
@@ -78,7 +74,7 @@ export default async (context: PlatformContext, data: CustomPayload): Promise<Cu
             }
         }
         else {
-            console.log(`Unable to process payload: ${JSON.stringify(data)}`); // Log the payload for debugging
+            console.log(`Unable to process payload: ${JSON.stringify(data)}`);
         }
     } catch (error) {
         console.error(
@@ -95,7 +91,7 @@ export default async (context: PlatformContext, data: CustomPayload): Promise<Cu
     return response;
 };
 
-// Type guard for curation payloads
+// Type guard for payloads
 function isMessage(payload: any): payload is MessageData {
     return (
         typeof payload === 'object' &&
@@ -104,7 +100,6 @@ function isMessage(payload: any): payload is MessageData {
     );
 }
 
-// TODO: Move template to an external repo
 // Slack message template in Block Kit format
 const slackMessageTemplate = {
     blocks: [
@@ -159,13 +154,13 @@ const slackMessageTemplate = {
 async function sendSlackMessage(context: PlatformContext, rawMessageData: MessageData, slackToken: string, slackChannel: string, response: CustomResponse): Promise<void> {
     const slackUrl = 'https://slack.com/api/chat.postMessage';
 
-    debugLog(`Sending Slack message to ${slackChannel}`);
+    console.log(`Sending Slack message to ${slackChannel}`);
 
     // Replace placeholders in the message template
     const msg = await replaceTokens(slackMessageTemplate, rawMessageData);
 
     if (DEBUG) {
-        debugLog('Slack message: ' + JSON.stringify(msg));
+        console.log('Slack message: ' + JSON.stringify(msg));
     }
 
     if (msg) {
@@ -185,11 +180,11 @@ async function sendSlackMessage(context: PlatformContext, rawMessageData: Messag
             );
     
             if (DEBUG) {
-                debugLog('Slack POST: ' + JSON.stringify(result));
+                console.log('Slack POST: ' + JSON.stringify(result));
             }
         
             if (result.data.ok) {
-                debugLog(`Slack: Message sent successfully to ${slackChannel}`);    
+                console.log(`Slack: Message sent successfully to ${slackChannel}`);    
                 response.message += `Message sent to Slack channel ${slackChannel}\n`;
             } else {
                 console.error(`Slack failed to send message to ${slackChannel}`, response.data.error);
@@ -209,19 +204,12 @@ async function sendSlackMessage(context: PlatformContext, rawMessageData: Messag
     }
 }
 
-// Helper wrapped with debug flag as we don't want to waste time
-function debugLog(logMessage: string) {
-    if (DEBUG) {
-        console.log(logMessage);
-    }
-}
-
 // Replace tokens in the message template
 function replaceTokens(messageTemplate: any, rawMessageData: MessageData) {
     let hydratedMessage;
     try {
-        debugLog('Replacing tokens in message template: ' + JSON.stringify(messageTemplate));
-        debugLog('Raw data: ' + JSON.stringify(rawMessageData));
+        console.log('Replacing tokens in message template: ' + JSON.stringify(messageTemplate));
+        console.log('Raw data: ' + JSON.stringify(rawMessageData));
 
         let message = JSON.stringify(messageTemplate);
 
@@ -238,7 +226,7 @@ function replaceTokens(messageTemplate: any, rawMessageData: MessageData) {
 
         hydratedMessage = JSON.parse(message);
 
-        debugLog(hydratedMessage);
+        console.log(hydratedMessage);
     } catch (error) {
         console.error(`Error replacing tokens in the message template. Raw message data: ${JSON.stringify(rawMessageData)}, Template: ${JSON.stringify(messageTemplate)}, Error: ${error.message}`);
         if (hydratedMessage && Object.keys(hydratedMessage).length > 0) {
@@ -271,11 +259,11 @@ const getValueFromJSON = (obj: JSONObject, path: string): any => {
                 if (Array.isArray(result) && index < result.length) {
                     result = result[index];
                 } else {
-                    return undefined;  // Return undefined if index is out of range or not an array
+                    return undefined;  
                 }
             }
         } else {
-            return undefined;  // Return undefined if the path is not valid
+            return undefined;
         }
     }
 
@@ -313,10 +301,10 @@ function getProperty(context: PlatformContext, propertyName: string, defaultValu
         value = context.secrets.get(propertyName);
     } catch (error) {
         // Ignore its not been overridden - not the greatest but this is how it works for now            
-        value = defaultValue; // Fallback to default if the secret cannot be retrieved
+        value = defaultValue;
     }
 
-    debugLog(`Retrieved property '${propertyName}': ${value !== null && value !== undefined ? value : 'not set, using default'}`);
+    console.log(`Retrieved property '${propertyName}': ${value !== null && value !== undefined ? value : 'not set, using default'}`);
 
     return value;
 }
