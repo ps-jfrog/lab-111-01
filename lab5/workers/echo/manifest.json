@@ -4,8 +4,8 @@
     "secrets": {},
     "sourceCodePath": "./worker.ts",
     "action": "GENERIC_EVENT",
-    "enabled": false,
-    "debug": false,
+    "enabled": true,
+    "debug": true,
     "projectKey": "",
     "application": "worker"
 }
