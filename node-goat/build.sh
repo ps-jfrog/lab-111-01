@@ -20,7 +20,7 @@ jf npm install --build-name=$JFROG_BUILD_NAME --build-number=$JFROG_BUILD_NUMBER
 #jf npm ci --no-fund --no-audit (This is what we should be running ina real CI job)
 
 # You can optionally publish the package itself, but for a build scan, the dependencies are what's key
-jf rt npm publish --build-name=$JFROG_BUILD_NAME --build-number=$JFROG_BUILD_NUMBER
+jf npm publish --build-name=$JFROG_BUILD_NAME --build-number=$JFROG_BUILD_NUMBER
 
 jf rt bce $JFROG_BUILD_NAME $JFROG_BUILD_NUMBER
 jf rt bag $JFROG_BUILD_NAME $JFROG_BUILD_NUMBER
