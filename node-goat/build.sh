@@ -38,5 +38,7 @@ jf bs $JFROG_BUILD_NAME $JFROG_BUILD_NUMBER
 
 # Build the docker image
 docker build -t nodegoat:1.0 .
+
+jf docker scan nodegoat:1.0
  
 echo "Build process completed successfully!"
